@@ -34,21 +34,6 @@ instance Read Row where
         | x == 'x'  = readsPrec' (row ++ [X]) xs
       readsPrec' row xs = [(row ++ replicate (10 - length row) U, xs)]
 
-hasNoTrips (X:X:X:xs) = False
-hasNoTrips (O:O:O:xs) = False
-hasNoTrips (x:xs)     = hasNoTrips xs
-hasNoTrips []         = True
-
-isLegalRow :: Row -> Bool
-isLegalRow row = ((length . filter (==X)) row <= 5)
-              && ((length . filter (==O)) row <= 5)
-              && (hasNoTrips row)
-
-allLegalRows :: [Row]
-allLegalRows = filter isLegalRow [[a,b,c,d,e,f,g,h,i,j]
-    | a <- [O, X], b <- [O, X], c <- [O, X], d <- [O, X], e <- [O, X]
-    , f <- [O, X], g <- [O, X], h <- [O, X], i <- [O, X], j <- [O, X]]
-
 type QRow = (Int, Int) -- (bit set of X/O, mask for unknowns)
 type QGrid = [QRow]
 
@@ -74,11 +59,7 @@ qRowToRow (val, mask) = qr2r [] 1
           _ -> qr2r (X:row) (n `shiftL` 1)
 
 validQRows :: [Int]
--- validQRows = map fst $ gridToQGrid allLegalRows
 validQRows = [155,171,173,179,181,182,203,205,211,213,214,217,218,299,301,307,309,310,331,333,339,341,342,345,346,357,358,361,362,364,403,405,406,409,410,421,422,425,426,428,434,436,587,589,595,597,598,601,602,613,614,617,618,620,659,661,662,665,666,677,678,681,682,684,690,692,713,714,716,722,724,805,806,809,810,812,818,820,841,842,844,850,852,868] -- length 10
-
-isValidQRow :: QRow -> Bool
-isValidQRow (val, mask) = val `elem` (map (mask .&.) validQRows)
 
 getValidQRow :: QRow -> QRow
 getValidQRow (val, mask) =
@@ -123,7 +104,7 @@ tryBoth grid = case tryGridT grid of
     (grid'', False) -> grid''
     (grid'', True) -> tryBoth grid''
 
-keepTryingBoth :: QGrid -> QGrid -- loop until nothing changes
+keepTryingBoth :: QGrid -> QGrid -- try rows, then loop until nothing changes
 keepTryingBoth grid = tryBoth $ fst $ tryGrid grid
 
 solve :: Grid -> Grid
