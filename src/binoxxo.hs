@@ -74,8 +74,8 @@ qRowToRow (val, mask) = qr2r [] 1
           _ -> qr2r (X:row) (n `shiftL` 1)
 
 validQRows :: [Int]
-validQRows = map fst $ gridToQGrid allLegalRows
--- validQRows = [155,171,173,179,181,182,203,205,211,213,214,217,218,299,301,307,309,310,331,333,339,341,342,345,346,357,358,361,362,364,403,405,406,409,410,421,422,425,426,428,434,436,587,589,595,597,598,601,602,613,614,617,618,620,659,661,662,665,666,677,678,681,682,684,690,692,713,714,716,722,724,805,806,809,810,812,818,820,841,842,844,850,852,868] -- length 10
+-- validQRows = map fst $ gridToQGrid allLegalRows
+validQRows = [155,171,173,179,181,182,203,205,211,213,214,217,218,299,301,307,309,310,331,333,339,341,342,345,346,357,358,361,362,364,403,405,406,409,410,421,422,425,426,428,434,436,587,589,595,597,598,601,602,613,614,617,618,620,659,661,662,665,666,677,678,681,682,684,690,692,713,714,716,722,724,805,806,809,810,812,818,820,841,842,844,850,852,868] -- length 10
 
 isValidQRow :: QRow -> Bool
 isValidQRow (val, mask) = val `elem` (map (mask .&.) validQRows)
@@ -101,45 +101,30 @@ readGrid = sequence $ replicate 10 $ read <$> getLine
 transposeQGrid :: QGrid -> QGrid
 transposeQGrid = gridToQGrid . transpose . qGridToGrid
 
-newtryG1r :: QRow -> (QRow, Bool)
-newtryG1r (val, mask) =
+tryRow :: QRow -> (QRow, Bool) -- solve as much as possible, True if changed
+tryRow (val, mask) =
   let (val', mask') = getValidQRow (val, mask)
   in ((val', mask'), mask /= mask')
 
-tryG1r :: QRow -> (QRow, Bool)
-tryG1r (val, mask) = tryG1r' 1 (val, mask)
-  where
-    tryG1r' t (val, mask)
-      | t == 1024
-          = ((val, mask), False)
-      | mask .&. t /= 0
-          = tryG1r' (t `shiftL` 1) (val, mask)
-      | not $ isValidQRow (val .|. t, mask .|. t)
-          = (fst $ tryG1r' (t `shiftL` 1) (val, mask .|. t), True)
-      | not $ isValidQRow (val, mask .|. t)
-          = (fst $ tryG1r' (t `shiftL` 1) (val .|. t, mask .|. t), True)
-      | otherwise
-          = tryG1r' (t `shiftL` 1) (val, mask)
+tryGrid :: QGrid -> (QGrid, Bool) -- solve as much as possible, True if changed
+tryGrid grid =
+  let result = map tryRow grid
+  in (map fst result, or $ map snd result)
 
-tryG :: QGrid -> (QGrid, Bool)
-tryG grid = (map fst r, or $ map snd r)
-  where r = map tryG1r grid
+tryGridT :: QGrid -> (QGrid, Bool) -- as above, but work on cols instead
+tryGridT grid =
+  let (grid', changed) = tryGrid $ transposeQGrid grid
+  in (transposeQGrid grid', changed)
 
-tryGT :: QGrid -> (QGrid, Bool)
-tryGT grid = (transposeQGrid r, dS)
-  where (r, dS) = tryG $ transposeQGrid grid
+tryBoth :: QGrid -> QGrid -- first try cols, then if something changed, try rows, ...
+tryBoth grid = case tryGridT grid of
+  (grid', False) -> grid'
+  (grid', True) -> case tryGrid grid' of
+    (grid'', False) -> grid''
+    (grid'', True) -> tryBoth grid''
 
-tryGBoth :: QGrid -> (QGrid, Bool)
-tryGBoth grid = (r2, dS1 && dS2)
-  where
-    (r1, dS1) = tryG grid
-    (r2, dS2) = tryGT r1
-
-keepTryingBoth :: QGrid -> QGrid
-keepTryingBoth grid
-    | not dS    = r
-    | otherwise = keepTryingBoth r
-  where (r, dS) = tryGBoth grid
+keepTryingBoth :: QGrid -> QGrid -- loop until nothing changes
+keepTryingBoth grid = tryBoth $ fst $ tryGrid grid
 
 solve :: Grid -> Grid
 solve = qGridToGrid . keepTryingBoth . gridToQGrid
