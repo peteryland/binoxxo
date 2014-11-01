@@ -10,4 +10,4 @@ mktable: MkTable.hs Types.hs
 	ghc -o $@ -O2 $<
 
 clean:
-	@rm -f binoxxo *.hi *.o
+	@rm -f binoxxo mktable *.hi *.o
