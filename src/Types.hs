@@ -40,34 +40,42 @@ parseGrid = do
   (r1:) <$> many (do r <- parseRow; return $ r ++ replicate (length r1 - length r) U) <* eof
 
 type QRow = (Int, Int) -- (bit set of X/O, mask for unknowns)
-type QGrid = [QRow]
+type QGrid = (Int, [QRow]) -- (row length, rows)
 
 rowToQRow :: Row -> QRow
-rowToQRow row = foldl' r2qr (0, 0) row
-  where
-    r2qr (val, mask) x =
-      let (val', mask') = (val `shiftL` 1, mask `shiftL` 1)
-      in case x of
-        U -> (val', mask')
-        O -> (val', mask' .|. 1)
-        X -> (val' .|. 1, mask' .|. 1)
+rowToQRow row =
+  foldl' r2qr (0, 0) row
+    where
+      r2qr (val, mask) x =
+        let (val', mask') = (val `shiftL` 1, mask `shiftL` 1)
+        in case x of
+          U -> (val', mask')
+          O -> (val', mask' .|. 1)
+          X -> (val' .|. 1, mask' .|. 1)
 
 gridToQGrid :: Grid -> QGrid
-gridToQGrid = map rowToQRow
+gridToQGrid g =
+  case g of
+    [] -> (0, [])
+    r:_ ->(length r, map rowToQRow g)
 
-qRowToRow :: QRow -> Row
-qRowToRow (val, mask) = qr2r [] 1
-  where
-    qr2r row n = case n of
-      1024 -> row
-      _ -> case mask .&. n of
-        0 -> qr2r (U:row) (n `shiftL` 1)
-        _ -> case val .&. n of
-          0 -> qr2r (O:row) (n `shiftL` 1)
-          _ -> qr2r (X:row) (n `shiftL` 1)
+qRowToRow :: Int -> QRow -> Row
+qRowToRow len (val, mask) =
+  unfoldr qr2r (1 `shiftL` (len-1))
+    where
+      qr2r 0 = Nothing
+      qr2r n =
+        let n' = (n `shiftR` 1)
+        in case mask .&. n of
+             0 -> Just (U, n')
+             _ -> case val .&. n of
+               0 -> Just (O, n')
+               _ -> Just (X, n')
 
 qGridToGrid :: QGrid -> Grid
-qGridToGrid = map qRowToRow
+qGridToGrid (len, g) =
+  map (qRowToRow len) g
 
 transposeQGrid :: QGrid -> QGrid
-transposeQGrid = gridToQGrid . transpose . qGridToGrid
+transposeQGrid =
+  gridToQGrid . transpose . qGridToGrid
