@@ -53,4 +53,4 @@ readGrid = sequence $ replicate 10 $ read <$> getLine
 main :: IO ()
 main = do grid <- readGrid
           putStrLn $ show grid
-          putStr $ show $ solve grid
+          putStrLn $ '\n' : (show $ solve grid)

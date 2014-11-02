@@ -3,7 +3,7 @@
 module Types where
 
 import Data.Bits(shiftL, (.&.), (.|.), complement)
-import Data.List(transpose, foldl')
+import Data.List(intercalate, transpose, foldl')
 import Data.Char(isDigit)
 
 data Cell = U | O | X deriving (Read, Enum, Bounded, Eq)
@@ -17,10 +17,10 @@ instance Show Cell where
              U -> "_"
 
 instance Show Row where
-  show row = concatMap show row ++ "\n"
+  show row = concatMap show row
 
 instance Show Grid where
-  show grid = concatMap show grid
+  show grid = intercalate "\n" $ map show grid
 
 instance Read Row where
   readsPrec _ "" = []
