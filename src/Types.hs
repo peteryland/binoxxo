@@ -2,9 +2,11 @@
 
 module Types where
 
-import Data.Bits(shiftL, (.&.), (.|.), complement)
-import Data.List(intercalate, transpose, foldl')
+import Data.Bits(shiftL, shiftR, (.&.), (.|.), complement)
+import Data.List(intercalate, transpose, foldl', unfoldr)
 import Data.Char(isDigit)
+import Control.Applicative((<$>), (<*))
+import Text.ParserCombinators.Parsec(GenParser, (<|>), many, many1, oneOf, newline, digit, eof, char)
 
 data Cell = U | O | X deriving (Read, Enum, Bounded, Eq)
 type Row = [Cell]
@@ -17,24 +19,25 @@ instance Show Cell where
              U -> "_"
 
 instance Show Row where
-  show row = concatMap show row
+  show row =
+    concatMap show row
 
 instance Show Grid where
-  show grid = intercalate "\n" $ map show grid
+  show grid =
+    intercalate "\n" $ map show grid
 
-instance Read Row where
-  readsPrec _ "" = []
-  readsPrec _ input = readsPrec' [] input
-    where
-      readsPrec' row (x:xs)
-        | isDigit x = readsPrec' (row ++ replicate (read $ takeWhile isDigit (x:xs)) U) xs
-        | x == '_'  = readsPrec' (row ++ [U]) xs
-        | x == 'O'  = readsPrec' (row ++ [O]) xs
-        | x == 'X'  = readsPrec' (row ++ [X]) xs
-        | x == 'o'  = readsPrec' (row ++ [O]) xs
-        | x == 'x'  = readsPrec' (row ++ [X]) xs
-      readsPrec' row xs = [(row ++ replicate (10 - length row) U, xs)]
+parseCell :: GenParser Char st Cell
+parseCell =
+  (oneOf "xX" >> return X) <|> (oneOf "oO" >> return O) <|> (char '_' >> return U)
 
+parseRow :: GenParser Char st Row
+parseRow =
+  concat <$> many ((:[]) <$> parseCell <|> flip replicate U . read <$> many1 digit) <* newline
+
+parseGrid :: GenParser Char st Grid
+parseGrid = do
+  r1 <- parseRow
+  (r1:) <$> many (do r <- parseRow; return $ r ++ replicate (length r1 - length r) U) <* eof
 
 type QRow = (Int, Int) -- (bit set of X/O, mask for unknowns)
 type QGrid = [QRow]
