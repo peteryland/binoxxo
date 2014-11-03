@@ -24,7 +24,9 @@ tryRow len possibleQRows (val, mask) =
     let vals = filter (\x -> x .&. mask == val) possibleQRows
         mask' = (foldl1' (.&.) vals) .|. (foldl' (\x -> (x .&.) . complement) (fullMask len) vals)
         val' = mask' .&. (head vals)
-    in ((val', mask'), mask /= mask')
+    in case vals of
+      [] -> ((val, mask), False)
+      _ -> ((val', mask'), mask /= mask')
 
 tryGrid :: QGrid -> (QGrid, Bool) -- solve as much as possible, True if changed
 tryGrid (len, grid) =
@@ -51,7 +53,7 @@ solve =
 solve' :: String -> String
 solve' s =
   case parse parseGrid "(stdin)" s of
-    Left e -> "Error parsing:\n" ++ show e
+    Left e -> "Error parsing:\n" ++ show e ++ "\n"
     Right grid -> show grid ++ "\n\n" ++ (show $ solve grid) ++ "\n"
 
 main :: IO ()

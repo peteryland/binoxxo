@@ -2,13 +2,12 @@
 
 module Types where
 
-import Data.Bits(shiftL, shiftR, (.&.), (.|.), complement)
+import Data.Bits(shiftL, shiftR, (.&.), (.|.))
 import Data.List(intercalate, transpose, foldl', unfoldr)
-import Data.Char(isDigit)
 import Control.Applicative((<$>), (<*))
-import Text.ParserCombinators.Parsec(GenParser, (<|>), many, many1, oneOf, newline, digit, eof, char)
+import Text.ParserCombinators.Parsec(GenParser, (<|>), many, many1, oneOf, newline, digit, eof, char, (<?>))
 
-data Cell = U | O | X deriving (Read, Enum, Bounded, Eq)
+data Cell = U | O | X deriving Eq
 type Row = [Cell]
 type Grid = [Row]
 
@@ -29,9 +28,10 @@ instance Show Grid where
 
 parseCell :: GenParser Char st Cell
 parseCell =
-  (oneOf "xX" >> return X) <|>
-  (oneOf "oO" >> return O) <|>
-  (char '_' >> return U)
+      (oneOf "xX" >> return X)
+  <|> (oneOf "oO" >> return O)
+  <|> (char '_' >> return U)
+  <?> "x, X, o, O, _"
 
 parseRow :: GenParser Char st Row
 parseRow =
