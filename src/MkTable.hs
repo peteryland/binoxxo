@@ -14,9 +14,11 @@ isLegalRow :: Row -> Bool
 isLegalRow row =
   let halflen = length row `div` 2
       isodd = length row `mod` 2
-  in ((length . filter (==X)) row == halflen + isodd)
-     && ((length . filter (==O)) row == halflen)
+  in (countEq X row == halflen + isodd)
+     && (countEq O row == halflen)
      && (hasNoTrips row)
+  where
+    countEq x = length . filter (== x)
 
 allPossibleRows :: Int -> [Row]
 allPossibleRows =
@@ -39,5 +41,5 @@ main = do
   putStrLn "module ValidQRows where\n"
   putStrLn "validQRows :: Int -> [Int]"
   putStrLn "validQRows n =\n  case n of"
-  sequence_ $ map (putStrLn . mkTable) [1..16]
+  mapM_ (putStrLn . mkTable) [1..16]
   putStrLn "    _ -> []"
