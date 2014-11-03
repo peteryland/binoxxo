@@ -1,26 +1,42 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, OverlappingInstances #-}
-
 module Main where
 
-import Types
+import Types(Cell(..), Row, gridToQGrid)
 
-hasNoTrips (X:X:X:xs) = False
-hasNoTrips (O:O:O:xs) = False
-hasNoTrips (x:xs)     = hasNoTrips xs
-hasNoTrips []         = True
+hasNoTrips xs =
+  case xs of
+    (X:X:X:_) -> False
+    (O:O:O:_) -> False
+    (_:xs')   -> hasNoTrips xs'
+    []        -> True
 
 isLegalRow :: Row -> Bool
-isLegalRow row = ((length . filter (==X)) row <= 5)
-              && ((length . filter (==O)) row <= 5)
-              && (hasNoTrips row)
+isLegalRow row =
+  let halflen = length row `div` 2
+      isodd = length row `mod` 2
+  in ((length . filter (==X)) row == halflen + isodd)
+     && ((length . filter (==O)) row == halflen)
+     && (hasNoTrips row)
 
-allLegalRows :: [Row]
-allLegalRows = filter isLegalRow [[a,b,c,d,e,f,g,h,i,j]
-    | a <- [O, X], b <- [O, X], c <- [O, X], d <- [O, X], e <- [O, X]
-    , f <- [O, X], g <- [O, X], h <- [O, X], i <- [O, X], j <- [O, X]]
+allLegalRows :: Int -> [Row]
+allLegalRows n = filter isLegalRow $ allPossibleRows n
+  where
+    allPossibleRows 0 = [[]]
+    allPossibleRows n =
+      let rows' = allPossibleRows $ n-1
+      in map (O:) rows' ++ map (X:) rows'
 
-validQRows :: [Int]
-validQRows = map fst $ gridToQGrid allLegalRows
+validQRows :: Int -> [Int]
+validQRows n =
+  map fst $ snd $ gridToQGrid (allLegalRows n)
+
+mkTable :: Int -> [Char]
+mkTable n =
+  "    " ++ show n ++ " -> " ++ (show $ validQRows n)
 
 main :: IO ()
-main = putStrLn $ show validQRows
+main = do
+  putStrLn "module ValidQRows where\n"
+  putStrLn "validQRows :: Int -> [Int]"
+  putStrLn "validQRows n =\n  case n of"
+  sequence_ $ map (putStrLn . mkTable) [1..16]
+  putStrLn "    _ -> []"

@@ -1,13 +1,17 @@
 SHELL := /bin/bash
+HFLAGS := -O2
 
 test: binoxxo
 	@for file in ../test/*.box; do ./binoxxo < "$$file" | diff -u "$${file/%\.box/.out}" - 2>&1; done
 
-binoxxo: Main.hs Types.hs
-	ghc -o $@ -O2 $<
+binoxxo: Main.hs Types.hs ValidQRows.hs
+	ghc -o $@ ${HFLAGS} $<
+
+ValidQRows.hs: mktable
+	./$< > $@
 
 mktable: MkTable.hs Types.hs
-	ghc -o $@ -O2 $<
+	ghc -o $@ ${HFLAGS} $<
 
 clean:
-	@rm -f binoxxo mktable *.hi *.o
+	@rm -f binoxxo mktable ValidQRows.hs *.hi *.o
