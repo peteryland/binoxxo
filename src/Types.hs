@@ -13,22 +13,25 @@ type Row = [Cell]
 type Grid = [Row]
 
 instance Show Cell where
-  show c = case c of
-             O -> "O"
-             X -> "X"
-             U -> "_"
+  show c =
+    case c of
+      O -> "O"
+      X -> "X"
+      U -> "_"
 
 instance Show Row where
   show row =
     concatMap show row
 
 instance Show Grid where
-  show grid =
-    intercalate "\n" $ map show grid
+  show =
+    intercalate "\n" . map show
 
 parseCell :: GenParser Char st Cell
 parseCell =
-  (oneOf "xX" >> return X) <|> (oneOf "oO" >> return O) <|> (char '_' >> return U)
+  (oneOf "xX" >> return X) <|>
+  (oneOf "oO" >> return O) <|>
+  (char '_' >> return U)
 
 parseRow :: GenParser Char st Row
 parseRow =
@@ -45,32 +48,33 @@ type QGrid = (Int, [QRow]) -- (row length, rows)
 rowToQRow :: Row -> QRow
 rowToQRow row =
   foldl' r2qr (0, 0) row
-    where
-      r2qr (val, mask) x =
-        let (val', mask') = (val `shiftL` 1, mask `shiftL` 1)
-        in case x of
-          U -> (val', mask')
-          O -> (val', mask' .|. 1)
-          X -> (val' .|. 1, mask' .|. 1)
+  where
+    r2qr (val, mask) x =
+      let (val', mask') = (val `shiftL` 1, mask `shiftL` 1)
+      in case x of
+        U -> (val', mask')
+        O -> (val', mask' .|. 1)
+        X -> (val' .|. 1, mask' .|. 1)
 
 gridToQGrid :: Grid -> QGrid
 gridToQGrid g =
   case g of
     [] -> (0, [])
-    r:_ ->(length r, map rowToQRow g)
+    r:_ -> (length r, map rowToQRow g)
 
 qRowToRow :: Int -> QRow -> Row
 qRowToRow len (val, mask) =
   unfoldr qr2r (1 `shiftL` (len-1))
-    where
-      qr2r 0 = Nothing
-      qr2r n =
-        let n' = (n `shiftR` 1)
-        in case mask .&. n of
-             0 -> Just (U, n')
-             _ -> case val .&. n of
-               0 -> Just (O, n')
-               _ -> Just (X, n')
+  where
+    qr2r n =
+      case n of
+        0 -> Nothing
+        _ -> let n' = (n `shiftR` 1)
+             in case mask .&. n of
+               0 -> Just (U, n')
+               _ -> case val .&. n of
+                 0 -> Just (O, n')
+                 _ -> Just (X, n')
 
 qGridToGrid :: QGrid -> Grid
 qGridToGrid (len, g) =
