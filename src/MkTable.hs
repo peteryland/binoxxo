@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad(replicateM)
 import Types(Cell(..), Row, gridToQGrid)
 
 hasNoTrips xs =
@@ -17,17 +18,17 @@ isLegalRow row =
      && ((length . filter (==O)) row == halflen)
      && (hasNoTrips row)
 
+allPossibleRows :: Int -> [Row]
+allPossibleRows =
+  flip replicateM [O, X]
+
 allLegalRows :: Int -> [Row]
-allLegalRows n = filter isLegalRow $ allPossibleRows n
-  where
-    allPossibleRows 0 = [[]]
-    allPossibleRows n =
-      let rows' = allPossibleRows $ n-1
-      in map (O:) rows' ++ map (X:) rows'
+allLegalRows =
+  filter isLegalRow . allPossibleRows
 
 validQRows :: Int -> [Int]
-validQRows n =
-  map fst $ snd $ gridToQGrid (allLegalRows n)
+validQRows =
+  map fst . snd . gridToQGrid . allLegalRows
 
 mkTable :: Int -> [Char]
 mkTable n =

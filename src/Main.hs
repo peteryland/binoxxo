@@ -15,21 +15,16 @@ isCompleteQRow :: Int -> QRow -> Bool
 isCompleteQRow len (_, mask) =
   mask == fullMask len
 
-getValidQRow :: Int -> [Int] -> QRow -> QRow
-getValidQRow len possibleQRows (val, mask) =
-  if isCompleteQRow len (val, mask)
-  then
-    (val, mask)
-  else
-    let vals = filter (\x -> x .&. mask == val) $ possibleQRows
-        mask' = (foldl1' (.&.) vals) .|. (foldl' (\x -> (x .&.) . complement) (fullMask len) vals)
-        val' = mask' .&. (head vals)
-    in (val', mask')
-
 tryRow :: Int -> [Int] -> QRow -> (QRow, Bool) -- solve as much as possible, True if changed
 tryRow len possibleQRows (val, mask) =
-  let (val', mask') = getValidQRow len possibleQRows (val, mask)
-  in ((val', mask'), mask /= mask')
+  if isCompleteQRow len (val, mask)
+  then
+    ((val, mask), False)
+  else
+    let vals = filter (\x -> x .&. mask == val) possibleQRows
+        mask' = (foldl1' (.&.) vals) .|. (foldl' (\x -> (x .&.) . complement) (fullMask len) vals)
+        val' = mask' .&. (head vals)
+    in ((val', mask'), mask /= mask')
 
 tryGrid :: QGrid -> (QGrid, Bool) -- solve as much as possible, True if changed
 tryGrid (len, grid) =
@@ -43,7 +38,7 @@ tryGridT grid =
   let (grid', changed) = tryGrid $ transposeQGrid grid
   in (transposeQGrid grid', changed)
 
-keepTryingBoth :: QGrid -> QGrid -- first try cols, then if something changed, try rows, ...
+keepTryingBoth :: QGrid -> QGrid -- first try rows, then if something changed, try cols, ...
 keepTryingBoth grid =
   let (grid', changed') = tryGrid grid
       (grid'', changed'') = tryGridT grid'
@@ -57,7 +52,7 @@ solve' :: String -> String
 solve' s =
   case parse parseGrid "(stdin)" s of
     Left e -> "Error parsing:\n" ++ show e
-    Right grid' -> show grid' ++ "\n\n" ++ (show $ solve grid') ++ "\n"
+    Right grid -> show grid ++ "\n\n" ++ (show $ solve grid) ++ "\n"
 
 main :: IO ()
 main =
