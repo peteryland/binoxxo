@@ -5,34 +5,34 @@ import ValidQRows(validQRows)
 import Data.Bits(shiftL, (.&.), (.|.), complement)
 import Data.List(foldl', foldl1', (\\))
 import Control.Applicative((<$>))
+import Control.Monad.State(State, evalState, get, put)
 import Text.Parsec(parse)
 
 fullMask :: Int -> Int
 fullMask len =
   (1 `shiftL` len) - 1
 
-isCompleteQRow :: Int -> QRow -> Bool
-isCompleteQRow len (_, mask) =
-  mask == fullMask len
-
-tryRow :: Int -> [Int] -> QRow -> (QRow, Bool) -- solve as much as possible, True if changed
-tryRow len possibleQRows (val, mask) =
-  if isCompleteQRow len (val, mask)
-  then
-    ((val, mask), False)
-  else
-    let vals = filter (\x -> x .&. mask == val) possibleQRows
-        mask' = (foldl1' (.&.) vals) .|. (foldl' (\x -> (x .&.) . complement) (fullMask len) vals)
-        val' = mask' .&. (head vals)
-    in case vals of
-      [] -> ((val, mask), False)
-      _ -> ((val', mask'), mask /= mask')
+tryRow :: Int -> QRow -> State [Int] (QRow, Bool) -- solve as much as possible, True if changed
+tryRow len (val, mask) = do
+  possibleQRows <- get
+  let vals = filter (\x -> x .&. mask == val) possibleQRows
+      mask' = (foldl1' (.&.) vals) .|. (foldl' (\x -> (x .&.) . complement) (fullMask len) vals)
+      val' = mask' .&. (head vals)
+  if mask == fullMask len || vals == [] then
+    return ((val, mask), False)
+  else do
+    -- if you don't want the uniqueness rule, remove the following four lines
+    put $ if mask' == fullMask len then   -- alternatively: if tail vals == []
+      possibleQRows \\ vals
+    else
+      possibleQRows
+    return ((val', mask'), mask /= mask')
 
 tryGrid :: QGrid -> (QGrid, Bool) -- solve as much as possible, True if changed
 tryGrid (len, grid) =
   let completeRows = foldl (\x (val, mask) -> if mask == fullMask len then val:x else x) [] grid
       possibleQRows = validQRows len \\ completeRows
-      result = map (tryRow len possibleQRows) grid
+      result = evalState (mapM (tryRow len) grid) possibleQRows
   in ((len, map fst result), or $ map snd result)
 
 tryGridT :: QGrid -> (QGrid, Bool) -- as above, but work on cols instead
