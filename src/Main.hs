@@ -34,8 +34,8 @@ isDone :: Int -> Int -> Bool
 isDone len mask =
   mask == fullMask len
 
-tryRow :: Int -> QRow -> StateT [Int] TryResult QRow -- try to solve as much as possible
-tryRow len (val, mask) = do
+tryRow :: Bool -> Int -> QRow -> StateT [Int] TryResult QRow -- try to solve as much as possible
+tryRow uniqRule len (val, mask) = do
   possibleQRows <- get
   let validRows = filter (\x -> x .&. mask == val) possibleQRows
       eachIs1 = foldl1' (.&.) validRows
@@ -45,44 +45,44 @@ tryRow len (val, mask) = do
   if isDone len mask || validRows == [] then
     return (val, mask)
   else do
-    -- if you don't want the uniqueness rule, remove the following four lines
-    put $ if isDone len mask' then
+    put $ if uniqRule && isDone len mask' then
       possibleQRows \\ validRows
     else
       possibleQRows
     lift . setChangedFlag $ mask /= mask'
     return (val', mask')
 
-tryGridRows :: QGrid -> TryResult QGrid -- try to solve as much as possible
-tryGridRows (len, grid) = do
+tryGridRows :: Bool -> QGrid -> TryResult QGrid -- try to solve as much as possible
+tryGridRows uniqRule (len, grid) = do
   let completeRows = map fst $ filter (isDone len . snd) grid
-      possibleQRows = validQRows len \\ completeRows -- TODO: should use Data.Set
-  r <- evalStateT (mapM (tryRow len) grid) possibleQRows
+      possibleQRows = if uniqRule then validQRows len \\ completeRows -- TODO: should use Data.Set
+                                  else validQRows len
+  r <- evalStateT (mapM (tryRow uniqRule len) grid) possibleQRows
   return (len, r)
 
-tryGridCols :: QGrid -> TryResult QGrid -- as above, but work on cols instead
-tryGridCols =
-  liftM transposeQGrid . tryGridRows . transposeQGrid
+tryGridCols :: Bool -> QGrid -> TryResult QGrid -- as above, but work on cols instead
+tryGridCols uniqRule =
+  liftM transposeQGrid . tryGridRows uniqRule . transposeQGrid
 
-keepTryingBoth :: QGrid -> QGrid
-keepTryingBoth =
-  mapIf keepTryingBoth . (tryGridRows >=> tryGridCols)
+keepTryingBoth :: Bool -> QGrid -> QGrid
+keepTryingBoth uniqRule =
+  mapIf (keepTryingBoth uniqRule) . (tryGridRows uniqRule >=> tryGridCols uniqRule)
   where
     mapIf f (TR x c) =
       case c of
         True -> f x
         False -> x
 
-solve :: Grid -> Grid
-solve =
-  qGridToGrid . keepTryingBoth . gridToQGrid
+solve :: Bool -> Grid -> Grid
+solve uniqRule =
+  qGridToGrid . keepTryingBoth uniqRule . gridToQGrid
 
-solve' :: String -> String
-solve' s =
+solve' :: Bool -> String -> String
+solve' uniqRule s =
   case parse parseGrid "(stdin)" s of
     Left e -> "Error parsing:\n" ++ show e ++ "\n"
-    Right grid -> show grid ++ "\n\n" ++ (show $ solve grid) ++ "\n"
+    Right grid -> show grid ++ "\n\n" ++ (show $ solve uniqRule grid) ++ "\n"
 
 main :: IO ()
 main =
-  interact solve'
+  interact $ solve' True
