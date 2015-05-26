@@ -1,6 +1,6 @@
 module Main where
 
-import Types(Row, Grid, QRow, QGrid, transposeQGrid, qGridToGrid, gridToQGrid, parseGrid)
+import Types(Row, Grid, QRow(..), QGrid(..), transposeQGrid, qGridToGrid, gridToQGrid, parseGrid)
 import ValidQRows(validQRows)
 import Data.Bits(shiftL, (.&.), (.|.), complement)
 import Data.List(foldl', foldl1', (\\))
@@ -10,79 +10,73 @@ import Control.Monad.Trans(lift)
 import Control.Monad.State(StateT, evalStateT, get, put)
 import Text.Parsec(parse)
 
-data TryResult a = TR a Bool -- (the result value, has anything changed?)
+-- Create a monad that will track if we're making any progress
+data ChangeMonitor a = ChangeMonitor { val :: a, changed :: Bool }
 
-instance Functor TryResult where
-  fmap f (TR x y) =
-    TR (f x) y
-
-instance Monad TryResult where
-  (TR x changed) >>= f =
-    let TR y changed' = f x
-    in TR y (changed || changed')
+instance Monad ChangeMonitor where
+  (ChangeMonitor x changed) >>= f =
+    let ChangeMonitor y changed' = f x
+    in ChangeMonitor y (changed || changed')
   return x =
-    TR x False
+    ChangeMonitor x False
 
-setChangedFlag :: Bool -> TryResult a
-setChangedFlag = TR undefined
+allOnes len = (1 `shiftL` len) - 1
+allKnown len umask = umask == allOnes len
 
-fullMask :: Int -> Int
-fullMask len =
-  (1 `shiftL` len) - 1
-
-isDone :: Int -> Int -> Bool
-isDone len mask =
-  mask == fullMask len
-
-tryRow :: Bool -> Int -> QRow -> StateT [Int] TryResult QRow -- try to solve as much as possible
-tryRow uniqRule len (val, mask) = do
+-- try to solve as much as possible
+solveRow :: Bool -> Int -> QRow -> StateT [Int] ChangeMonitor QRow
+solveRow useUniqueRule len (QRow xbits umask) = do
   possibleQRows <- get
-  let validRows = filter (\x -> x .&. mask == val) possibleQRows
+  let validRows = filter (\x -> x .&. umask == xbits) possibleQRows
       eachIs1 = foldl1' (.&.) validRows
-      eachIs0 = foldl' (.&.) (fullMask len) (map complement validRows)
-      mask' =  eachIs1 .|. eachIs0
-      val' = mask' .&. (head validRows)
-  if isDone len mask || validRows == [] then
-    return (val, mask)
+      eachIs0 = foldl' (.&.) (allOnes len) (map complement validRows)
+      umask' =  eachIs1 .|. eachIs0
+      xbits' = umask' .&. (head validRows)
+  if allKnown len umask || validRows == [] then
+    return (QRow xbits umask)
   else do
-    put $ if uniqRule && isDone len mask' then
-      possibleQRows \\ validRows
-    else
-      possibleQRows
-    lift . setChangedFlag $ mask /= mask'
-    return (val', mask')
-
-tryGridRows :: Bool -> QGrid -> TryResult QGrid -- try to solve as much as possible
-tryGridRows uniqRule (len, grid) = do
-  let completeRows = map fst $ filter (isDone len . snd) grid
-      possibleQRows = if uniqRule then validQRows len \\ completeRows -- TODO: should use Data.Set
-                                  else validQRows len
-  r <- evalStateT (mapM (tryRow uniqRule len) grid) possibleQRows
-  return (len, r)
-
-tryGridCols :: Bool -> QGrid -> TryResult QGrid -- as above, but work on cols instead
-tryGridCols uniqRule =
-  liftM transposeQGrid . tryGridRows uniqRule . transposeQGrid
-
-keepTryingBoth :: Bool -> QGrid -> QGrid
-keepTryingBoth uniqRule =
-  mapIf (keepTryingBoth uniqRule) . (tryGridRows uniqRule >=> tryGridCols uniqRule)
+    put $ if useUniqueRule && allKnown len umask' then
+        possibleQRows \\ validRows
+      else
+        possibleQRows
+    setChanged $ umask /= umask'
+    return (QRow xbits' umask')
   where
-    mapIf f (TR x c) =
+    setChanged = lift . ChangeMonitor undefined
+
+-- try to solve as much as possible
+solveRows :: Bool -> QGrid -> ChangeMonitor QGrid
+solveRows useUniqueRule (QGrid len grid) = do
+  let completeRows = map xbits $ filter (allKnown len . umask) grid
+      possibleQRows = if useUniqueRule then validQRows len \\ completeRows -- TODO: should use Data.Set
+                                  else validQRows len
+  r <- evalStateT (mapM (solveRow useUniqueRule len) grid) possibleQRows
+  return (QGrid len r)
+
+-- as above, but work on cols instead
+solveCols :: Bool -> QGrid -> ChangeMonitor QGrid
+solveCols useUniqueRule =
+  liftM transposeQGrid . solveRows useUniqueRule . transposeQGrid
+
+solveQGrid :: Bool -> QGrid -> QGrid
+solveQGrid useUniqueRule =
+  mapIf (solveQGrid useUniqueRule) . (solveRows useUniqueRule >=> solveCols useUniqueRule)
+  where
+    mapIf f (ChangeMonitor x c) =
       case c of
         True -> f x
         False -> x
 
 solve :: Bool -> Grid -> Grid
-solve uniqRule =
-  qGridToGrid . keepTryingBoth uniqRule . gridToQGrid
+solve useUniqueRule =
+  qGridToGrid . solveQGrid useUniqueRule . gridToQGrid
 
-solve' :: Bool -> String -> String
-solve' uniqRule s =
-  case parse parseGrid "(stdin)" s of
-    Left e -> "Error parsing:\n" ++ show e ++ "\n"
-    Right grid -> show grid ++ "\n\n" ++ (show $ solve uniqRule grid) ++ "\n"
+parseAndSolve :: Bool -> String -> String
+parseAndSolve useUniqueRule s = case parse parseGrid "(stdin)" s of
+  Left e -> "Error parsing:\n" ++ show e ++ "\n"
+  Right grid -> show grid ++ "\n\n" ++ (show $ solve useUniqueRule grid) ++ "\n"
 
 main :: IO ()
 main =
-  interact $ solve' True
+  let useUniqueRule = True
+  in interact $ parseAndSolve useUniqueRule

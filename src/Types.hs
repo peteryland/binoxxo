@@ -7,9 +7,14 @@ import Data.List(intercalate, transpose, foldl', unfoldr)
 import Control.Applicative((<$>), (<*))
 import Text.ParserCombinators.Parsec(GenParser, (<|>), many, many1, oneOf, newline, digit, eof, char, (<?>))
 
+-- The following are the basic datatypes for the grid
+
 data Cell = U | O | X deriving Eq
 type Row = [Cell]
 type Grid = [Row]
+
+
+-- Show instances for our basic types
 
 instance Show Cell where
   show c =
@@ -19,12 +24,13 @@ instance Show Cell where
       U -> "_"
 
 instance Show Row where
-  show row =
-    concatMap show row
+  show = concatMap show
 
 instance Show Grid where
-  show =
-    intercalate "\n" . map show
+  show = intercalate "\n" . map show
+
+
+-- Parser for the grid
 
 parseCell :: GenParser Char st Cell
 parseCell =
@@ -42,42 +48,47 @@ parseGrid = do
   r1 <- parseRow
   (r1:) <$> many (do r <- parseRow; return $ r ++ replicate (length r1 - length r) U) <* eof
 
-type QRow = (Int, Int) -- (bit set of X/O, mask for unknowns)
-type QGrid = (Int, [QRow]) -- (row length, rows)
+
+-- For efficiency, we use a binary representation of the grid when solving.
+-- The QRow contains two bit sets: the first is the X/O pattern, the second is the unknown mask.
+
+data QRow = QRow {xbits :: Int, umask :: Int}
+data QGrid = QGrid {rowlen :: Int, qrows :: [QRow]}
 
 rowToQRow :: Row -> QRow
-rowToQRow row =
-  foldl' r2qr (0, 0) row
+rowToQRow =
+  foldl' r2qr (QRow 0 0)
   where
-    r2qr (val, mask) x =
-      let (val', mask') = (val `shiftL` 1, mask `shiftL` 1)
+    r2qr (QRow xbits umask) x =
+      let xbits' = xbits `shiftL` 1
+          umask' = umask `shiftL` 1
       in case x of
-        U -> (val', mask')
-        O -> (val', mask' .|. 1)
-        X -> (val' .|. 1, mask' .|. 1)
+        U -> QRow xbits' umask'
+        O -> QRow xbits' (umask' .|. 1)
+        X -> QRow (xbits' .|. 1) (umask' .|. 1)
 
 gridToQGrid :: Grid -> QGrid
 gridToQGrid g =
   case g of
-    [] -> (0, [])
-    r:_ -> (length r, map rowToQRow g)
+    [] -> QGrid 0 []
+    r:_ -> QGrid (length r) (map rowToQRow g)
 
 qRowToRow :: Int -> QRow -> Row
-qRowToRow len (val, mask) =
+qRowToRow len (QRow xbits umask) =
   unfoldr qr2r (1 `shiftL` (len-1))
   where
     qr2r n =
       case n of
         0 -> Nothing
         _ -> let n' = (n `shiftR` 1)
-             in case mask .&. n of
+             in case umask .&. n of
                0 -> Just (U, n')
-               _ -> case val .&. n of
+               _ -> case xbits .&. n of
                  0 -> Just (O, n')
                  _ -> Just (X, n')
 
 qGridToGrid :: QGrid -> Grid
-qGridToGrid (len, g) =
+qGridToGrid (QGrid len g) =
   map (qRowToRow len) g
 
 transposeQGrid :: QGrid -> QGrid

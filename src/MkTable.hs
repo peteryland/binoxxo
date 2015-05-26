@@ -1,17 +1,14 @@
 module Main where
 
 import Control.Monad(replicateM)
-import Types(Cell(..), Row, gridToQGrid)
+import Types(Cell(..), Row, gridToQGrid, xbits, qrows)
 
-hasNoTrips xs =
-  case xs of
-    (X:X:X:_) -> False
-    (O:O:O:_) -> False
-    (_:xs')   -> hasNoTrips xs'
-    []        -> True
+-- Set this to control the maximum row length this solver can handle
+maxLen = 15
 
-isLegalRow :: Row -> Bool
-isLegalRow row =
+-- Check if a given row meets the rules
+isValidRow :: Row -> Bool
+isValidRow row =
   let halflen = length row `div` 2
       isodd = length row `mod` 2
   in (countEq X row == halflen + isodd)
@@ -19,27 +16,31 @@ isLegalRow row =
      && (hasNoTrips row)
   where
     countEq x = length . filter (== x)
+    hasNoTrips xs =
+      case xs of
+        (X:X:X:_) -> False
+        (O:O:O:_) -> False
+        (_:xs')   -> hasNoTrips xs'
+        []        -> True
 
-allPossibleRows :: Int -> [Row]
-allPossibleRows =
-  flip replicateM [O, X]
-
-allLegalRows :: Int -> [Row]
-allLegalRows =
-  filter isLegalRow . allPossibleRows
-
+-- Output a list of all possible rows for a given row length
 validQRows :: Int -> [Int]
 validQRows =
-  map fst . snd . gridToQGrid . allLegalRows
+  map xbits . qrows . gridToQGrid . validRows
+  where
+    validRows = filter isValidRow . possibleRows
+    possibleRows = flip replicateM [O, X]
 
+-- Create the rows for the haskell case statement generated below
 mkTable :: Int -> [Char]
 mkTable n =
   "    " ++ show n ++ " -> " ++ (show $ validQRows n)
 
+-- Build a haskell source file containing the lists of possible qrow values
 main :: IO ()
 main = do
   putStrLn "module ValidQRows where\n"
-  putStrLn "validQRows :: Int -> [Int]"
+  putStrLn "validQRows :: Int -> [Int]" -- TODO: why not output sets?
   putStrLn "validQRows n =\n  case n of"
-  mapM_ (putStrLn . mkTable) [1..16]
+  mapM_ (putStrLn . mkTable) [1..maxLen]
   putStrLn "    _ -> []"
