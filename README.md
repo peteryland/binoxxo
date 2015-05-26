@@ -1,12 +1,12 @@
-## Binoxxo and Binairo Solver
+## Super-Fast Binoxxo and Binairo Solver
 
 This program solves *Binoxxo* and *Binairo* (aka *Tohu wa Vohu*, *Binary
-Puzzle*, *Tic-Tac-Logic*, *Unruly*) puzzles.  These puzzles are really similar,
-differing only in the uniqueness rule.  This solver now applies this rule.
-Confusingly, I first saw this puzzle in the Swiss German newspaper [*Blick am
-Abend*](http://www.blickamabend.ch/) when it replaced *Hashiwokakero* (aka
-*Bridges*, *橋をかけろ*) in early 2014, but they call it *Binoxxo* even though
-it has the extra *Binairo* rule.
+Puzzle*, *Tic-Tac-Logic*, *Unruly*, *Takuzu*) puzzles.  The Rules: From a
+partially-filled grid of Xs and Os (or sometimes 0s and 1s), the grid must be
+filled in, ensuring that no three symbols appear consecutively, and that each
+row and column contains an equal number of each symbol.  In some publications
+the uniqueness rule applies, which adds the extra condition that all rows and
+columns must be unique.  This solver honours this extra rule by default.
 
 You need a Haskell compiler or interpreter to run the solver.  Get it from your
 package manager (e.g. `aptitude install haskell-platform`), or from the
@@ -14,7 +14,11 @@ package manager (e.g. `aptitude install haskell-platform`), or from the
 the full Haskell Platform for your system (e.g. on a Raspberry Pi), you'll also
 need to install parsec (`cabal install parsec`).
 
-To compile and run the tests simply type `make`.
+To compile and run the tests simply type `make`.  It takes around 6s to build
+and run all the tests on an m1.micro instance.  At first glance, it might look
+like an `O(n)` solver for `n`x`n` puzzles, but the transpose operation is the
+expensive one, turning it into a worst case `O(n)` but normally very close to
+`O(1)` algorithm.
 
 The program expects a grid on stdin in any of the following formats, with the
 first row setting the row length for the rest of the grid (so it must be a full
@@ -33,6 +37,26 @@ _          (blank row)
 10         (blank row)
 ```
 
+For example:
+
+```
+x3x5
+3o
+oo3o2x
+1o2x3o
+4x2x
+9o
+1o4ox
+7x
+1oo3o
+2x2o1x
+```
+
+Please see the test directory for more examples.
+
 This will work out of the box with any `N⨉M` puzzles, where `1 ≤ N,M ≤ 16`.  If
 you want it to work with bigger grids, just change src/MkTable.hs to output up
 to whatever size you need.
+
+This program is Copyright (c) 2015 Pete Ryland and licensed under the GNU
+GPLv3.
