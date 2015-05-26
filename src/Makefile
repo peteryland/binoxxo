@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 HFLAGS := -O2
 
+all: test
+
 test: binoxxo
 	@for file in ../test/*.box; do ./binoxxo < "$$file" | diff -u "$${file/%\.box/.out}" - 2>&1; done
 
@@ -15,3 +17,5 @@ mktable: MkTable.hs Types.hs
 
 clean:
 	@rm -f binoxxo mktable ValidQRows.hs *.hi *.o
+
+.PHONY: all test clean
