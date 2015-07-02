@@ -1,12 +1,15 @@
 DIRS = src
 
 all:
-	        @for d in $(DIRS); do $(MAKE) -C "$$d"; done
+	        @for d in $(DIRS); do $(MAKE) -s -C "$$d"; done
 
 test:
-	        @for d in $(DIRS); do $(MAKE) -C "$$d" test; done
+	        @for d in $(DIRS); do $(MAKE) -s -C "$$d" test; done
 
 clean:
-	        @for d in $(DIRS); do $(MAKE) -C "$$d" clean; done
+	        @for d in $(DIRS); do $(MAKE) -s -C "$$d" clean; done
 
-.PHONY: all test clean
+install:
+	        @for d in $(DIRS); do $(MAKE) -s -C "$$d" install; done
+
+.PHONY: all test clean install
