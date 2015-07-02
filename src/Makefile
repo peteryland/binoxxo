@@ -18,4 +18,7 @@ mktable: MkTable.hs Types.hs
 clean:
 	@rm -f binoxxo mktable ValidQRows.hs *.hi *.o
 
-.PHONY: all test clean
+install: binoxxo
+	@cp -f binoxxo /usr/bin/
+
+.PHONY: all test clean install
