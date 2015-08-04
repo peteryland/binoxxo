@@ -3,3 +3,4 @@
 src/ValidQRows.hs
 src/mktable
 src/binoxxo
+cabal-dev/
