@@ -54,9 +54,9 @@ oo3o2x
 
 Please see the test directory for more examples.
 
-This will work out of the box with any `N⨉M` puzzles, where `1 ≤ N,M ≤ 16`.  If
-you want it to work with bigger grids, just change src/MkTable.hs to output up
-to whatever size you need.
+This will work out of the box with any `N⨉M` puzzles, where `1 ≤ N,M ≤ 14`.  If
+you want it to work with bigger grids, build with `make MAXLEN=`*`len`*,
+setting *`len`* to whatever size you need.
 
 This program is Copyright (c) 2015 Pete Ryland and licensed under the GNU
 GPLv3.

@@ -1,5 +1,7 @@
 SHELL := /bin/bash
 HFLAGS := -O2
+MAXLEN ?= 14
+maxlen := $(shell tr -cd '[:digit:]' <<< "${MAXLEN}")
 
 all: binoxxo
 
@@ -10,7 +12,7 @@ binoxxo: Main.hs Types.hs ValidQRows.hs
 	ghc -o $@ ${HFLAGS} $<
 
 ValidQRows.hs: mktable
-	./$< > $@
+	./$< ${maxlen} > $@
 
 mktable: MkTable.hs Types.hs
 	ghc -o $@ ${HFLAGS} $<

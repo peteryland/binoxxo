@@ -1,10 +1,9 @@
 module Main where
 
+import Control.Exception(try, evaluate, SomeException)
 import Control.Monad(replicateM)
+import System.Environment(getArgs)
 import Types(Cell(..), Row, gridToQGrid, xbits, qrows)
-
--- Set this to control the maximum row length this solver can handle
-maxLen = 15
 
 -- Check if a given row meets the rules
 isValidRow :: Row -> Bool
@@ -39,8 +38,15 @@ mkTable n =
 -- Build a haskell source file containing the lists of possible qrow values
 main :: IO ()
 main = do
+  -- the first argument sets the maximum row length this solver can handle
+  args <- getArgs
+  maxLenE <- try $ evaluate $ read $ head args
+  let maxLen = either handleArgParseError id maxLenE
   putStrLn "module ValidQRows where\n"
   putStrLn "validQRows :: Int -> [Int]" -- TODO: why not output sets?
   putStrLn "validQRows n =\n  case n of"
   mapM_ (putStrLn . mkTable) [1..maxLen]
   putStrLn "    _ -> []"
+  where
+    handleArgParseError :: SomeException -> Int
+    handleArgParseError _ = 14 -- default value for maxLen

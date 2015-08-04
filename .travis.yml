@@ -4,7 +4,10 @@ ghc:
   - 7.8
   - 7.6
   - 7.4
+env:
+  - 
+  - MAXLEN=12
 install:
-  - cabal install parsec && make
+  - cabal install parsec
 script:
   - make test
