@@ -4,8 +4,8 @@ import Types(Row, Grid, QRow(..), QGrid(..), transposeQGrid, qGridToGrid, gridTo
 import ValidQRows(validQRows)
 import Data.Bits(shiftL, (.&.), (.|.), complement)
 import Data.List(foldl', foldl1', (\\))
-import Control.Applicative((<$>))
-import Control.Monad(liftM, (>=>))
+import Control.Applicative((<$>), Applicative(..))
+import Control.Monad(liftM, (>=>), ap)
 import Control.Monad.Trans(lift)
 import Control.Monad.State(StateT, evalStateT, get, put)
 import Text.Parsec(parse)
@@ -17,8 +17,14 @@ instance Monad ChangeMonitor where
   (ChangeMonitor x changed) >>= f =
     let ChangeMonitor y changed' = f x
     in ChangeMonitor y (changed || changed')
-  return x =
-    ChangeMonitor x False
+  return = pure
+
+instance Applicative ChangeMonitor where
+  pure x = ChangeMonitor x False
+  (<*>) = ap
+
+instance Functor ChangeMonitor where
+  fmap = liftM
 
 allOnes len = (1 `shiftL` len) - 1
 allKnown len umask = umask == allOnes len

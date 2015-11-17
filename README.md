@@ -1,4 +1,5 @@
-## Super-Fast Binoxxo and Binairo Solver
+## Binoxxo and Binairo Solver
+[![Travis Build Status](https://travis-ci.org/peteryland/binoxxo.svg?branch=master)](https://travis-ci.org/peteryland/binoxxo)
 
 This program solves *Binoxxo* and *Binairo* (aka *Tohu wa Vohu*, *Binary
 Puzzle*, *Tic-Tac-Logic*, *Unruly*, *Takuzu*) puzzles.  The Rules: From a
