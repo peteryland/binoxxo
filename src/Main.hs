@@ -3,7 +3,8 @@ module Main where
 import Types(Row, Grid, QRow(..), QGrid(..), transposeQGrid, qGridToGrid, gridToQGrid, parseGrid)
 import ValidQRows(validQRows)
 import Data.Bits(shiftL, (.&.), (.|.), complement)
-import Data.List(foldl', foldl1', (\\))
+import Data.Set(Set, (\\))
+import qualified Data.Set as Set(filter, foldl', map, toList, null, fromList)
 import Control.Applicative((<$>), Applicative(..))
 import Control.Monad(liftM, (>=>), ap)
 import Control.Monad.Trans(lift)
@@ -30,15 +31,15 @@ allOnes len = (1 `shiftL` len) - 1
 allKnown len umask = umask == allOnes len
 
 -- try to solve as much as possible
-solveRow :: Bool -> Int -> QRow -> StateT [Int] ChangeMonitor QRow
+solveRow :: Bool -> Int -> QRow -> StateT (Set Int) ChangeMonitor QRow
 solveRow useUniqueRule len (QRow xbits umask) = do
   possibleQRows <- get
-  let validRows = filter (\x -> x .&. umask == xbits) possibleQRows
-      eachIs1 = foldl1' (.&.) validRows
-      eachIs0 = foldl' (.&.) (allOnes len) (map complement validRows)
+  let validRows = Set.filter (\x -> x .&. umask == xbits) possibleQRows
+      eachIs1 = Set.foldl' (.&.) (allOnes len) validRows
+      eachIs0 = Set.foldl' (.&.) (allOnes len) (Set.map complement validRows)
       umask' =  eachIs1 .|. eachIs0
-      xbits' = umask' .&. (head validRows)
-  if allKnown len umask || validRows == [] then
+      xbits' = umask' .&. (head $ Set.toList validRows)
+  if allKnown len umask || Set.null validRows then
     return (QRow xbits umask)
   else do
     put $ if useUniqueRule && allKnown len umask' then
@@ -53,8 +54,8 @@ solveRow useUniqueRule len (QRow xbits umask) = do
 -- try to solve as much as possible
 solveRows :: Bool -> QGrid -> ChangeMonitor QGrid
 solveRows useUniqueRule (QGrid len grid) = do
-  let completeRows = map xbits $ filter (allKnown len . umask) grid
-      possibleQRows = if useUniqueRule then validQRows len \\ completeRows -- TODO: should use Data.Set
+  let completeRows = Set.fromList $ map xbits $ filter (allKnown len . umask) grid
+      possibleQRows = if useUniqueRule then validQRows len \\ completeRows
                                   else validQRows len
   r <- evalStateT (mapM (solveRow useUniqueRule len) grid) possibleQRows
   return (QGrid len r)

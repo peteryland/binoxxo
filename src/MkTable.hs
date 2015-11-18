@@ -37,7 +37,7 @@ validQRows =
 -- Create the rows for the haskell case statement generated below
 mkTable :: Int -> [Char]
 mkTable n =
-  "    " ++ show n ++ " -> " ++ (show $ validQRows n)
+  "    " ++ show n ++ " -> Set.fromDistinctAscList " ++ (show $ validQRows n)
 
 -- Build a haskell source file containing the lists of possible qrow values
 main :: IO ()
@@ -47,7 +47,9 @@ main = do
   maxLenE <- try $ evaluate $ read $ head args
   let maxLen = either (\(e::SomeException) -> default_maxLen) id maxLenE
   putStrLn "module ValidQRows where\n"
-  putStrLn "validQRows :: Int -> [Int]" -- TODO: why not output sets?
+  putStrLn "import Data.Set(Set)"
+  putStrLn "import qualified Data.Set as Set(fromDistinctAscList, empty)\n"
+  putStrLn "validQRows :: Int -> Set Int"
   putStrLn "validQRows n =\n  case n of"
   mapM_ (putStrLn . mkTable) [1..maxLen]
-  putStrLn "    _ -> []"
+  putStrLn "    _ -> Set.empty"
