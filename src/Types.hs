@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, OverlappingInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Types where
 
@@ -16,17 +16,17 @@ type Grid = [Row]
 
 -- Show instances for our basic types
 
-instance Show Cell where
+instance {-# OVERLAPPING #-} Show Cell where
   show c =
     case c of
       O -> "O"
       X -> "X"
       U -> "_"
 
-instance Show Row where
+instance {-# OVERLAPPING #-} Show Row where
   show = concatMap show
 
-instance Show Grid where
+instance {-# OVERLAPPING #-} Show Grid where
   show = intercalate "\n" . map show
 
 

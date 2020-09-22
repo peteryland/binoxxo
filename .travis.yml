@@ -1,12 +1,13 @@
 language: haskell
 ghc:
+  - 8.10
+  - 8.8
   - 8.6
   - 8.4
   - 8.2
   - 8.0
   - 7.10.3
 env:
-  - 
   - MAXLEN=12
 install:
   - cabal install parsec
